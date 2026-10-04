@@ -1,0 +1,163 @@
+{
+  "project_name": "LabCare Clinical Laboratory",
+  "archetype": "The Clinical Precision Sentinel (Swiss-Nordic Medical Grade)",
+  "app_type": "hybrid_fullstack_dashboard_and_reporting",
+  "currency": "PKR (Rs.)",
+  "device_targets": ["Windows Desktop PWA", "iPad / Tablet Lab Stations", "Mobile Responsive"],
+  "theme_strategy": {
+    "default_mode": "light",
+    "theme_toggle": true,
+    "rationale": "Clinical diagnostic laboratories demand spotless, crisp, high-visibility white/slate backgrounds with high contrast for reading reference intervals, critical panic values, and specimen barcodes. Dark mode is available for low-light night-shift microscopy work stations."
+  },
+  "typography": {
+    "heading_font": "Cabinet Grotesk, Manrope, -apple-system, sans-serif",
+    "body_font": "IBM Plex Sans, Inter, -apple-system, sans-serif",
+    "numeric_mono_font": "JetBrains Mono, Roboto Mono, monospace",
+    "rules": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight",
+      "h2": "text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight",
+      "h3": "text-lg sm:text-xl font-semibold tracking-normal",
+      "h4": "text-base sm:text-lg font-semibold",
+      "body": "text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-200",
+      "lab_data_numeric": "font-mono font-medium tracking-tight tabular-nums",
+      "badge_overline": "text-[11px] font-bold uppercase tracking-[0.18em]"
+    }
+  },
+  "colors": {
+    "brand_identity": {
+      "crimson_blood_primary": "#BE123C",
+      "crimson_blood_hover": "#9F1239",
+      "crimson_blood_subtle": "#FFF1F2",
+      "deep_navy_authority": "#0F172A",
+      "navy_subtle": "#1E293B",
+      "clinical_cyan_teal": "#0D9488",
+      "clinical_teal_subtle": "#CCFBF1",
+      "slate_backdrop": "#F8FAFC",
+      "pure_clinical_white": "#FFFFFF",
+      "amber_warning_panic": "#D97706",
+      "emerald_normal_in_range": "#059669"
+    },
+    "forbidden_colors": ["#7351B7", "#8A2BE2", "generic neon cyan gradients", "muddy grey transparency"],
+    "critical_contrast": {
+      "badge_abnormal_high": "bg-rose-100 text-rose-800 border-rose-300 font-semibold",
+      "badge_abnormal_low": "bg-amber-100 text-amber-800 border-amber-300 font-semibold",
+      "badge_normal": "bg-emerald-50 text-emerald-800 border-emerald-200 font-medium",
+      "badge_critical_panic": "bg-red-600 text-white font-bold animate-pulse"
+    }
+  },
+  "visual_enhancers": {
+    "card_style": "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_20px_-5px_rgba(15,23,42,0.03)]",
+    "active_tracing_focus": "focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2",
+    "glass_header": "bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800",
+    "specimen_status_dots": "h-2.5 w-2.5 rounded-full inline-block mr-1.5"
+  },
+  "layouts_and_grids": {
+    "dashboard_bento": "High density grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6",
+    "report_builder_grid": "grid-cols-1 lg:grid-cols-12 gap-6 with left panel (col-span-12 lg:col-span-4) for patient & test selection and right panel (col-span-12 lg:col-span-8) for dynamic result inputs and live printable preview",
+    "test_catalog_grid": "Search & filter ribbon on top, multi-category tabs (Hematology, Biochemistry, Endocrinology, Immunology, Virology, Microbiology, Urine/Stool, Routine), responsive catalog table with quick reference range edit and PKR pricing",
+    "patient_record_layout": "Patient header banner with demographics, specimen collection timeline, previous report cards, and interactive trend charts (Recharts line charts showing parameter evolution across test dates)",
+    "print_sheet_layout": "Strict A4 print preview with clinical header, ISO/accreditation watermark, barcodes, two-column test grouping, pathologist digital signature box, and QR code verification stub"
+  },
+  "key_features_blueprint": {
+    "role_based_staff_auth": {
+      "description": "Mocked fast staff login with single-click demo switch between Lab Pathologist / Admin ('Dr. Sarah Tariq - Chief Pathologist') and Senior Lab Technologist ('Hamza Ali - MLT Lead')",
+      "technician_view": "Focused on fast entry of test values, pending queues, specimen accessioning",
+      "pathologist_view": "Authorized to review, sign-off reports, edit test catalog & reference ranges, view revenue KPIs"
+    },
+    "kpi_executive_bar": [
+      {"label": "Today's Patient Intake", "test_id": "kpi-patients-today", "change": "+14% vs yesterday"},
+      {"label": "Tests Processed (Today)", "test_id": "kpi-tests-today", "change": "68 completed / 12 in progress"},
+      {"label": "Gross Revenue (PKR)", "test_id": "kpi-revenue-pkr", "change": "Today: Rs. 142,500"},
+      {"label": "Pending Sign-Off / Abnormal", "test_id": "kpi-pending-abnormal", "change": "5 requiring pathologist review"}
+    ],
+    "test_catalog_depth": {
+      "categories": [
+        "Hematology & Coagulation (CBC, ESR, PT/INR, Ferritin, Blood Group)",
+        "Clinical Biochemistry (LFT, RFT, Lipid Profile, Blood Glucose Fasting/Random, HbA1c, Uric Acid, Electrolytes)",
+        "Endocrinology & Hormones (Thyroid Profile TSH/T3/T4, Vitamin D3, B12, Testosterone, Beta-hCG)",
+        "Serology & Immunology (Widal, Typhidot, RA Factor, ASO, CRP, ANA)",
+        "Infectious Diseases & Virology (HBsAg, Anti-HCV, HIV 1&2, Dengue NS1/IgG/IgM, Malarial Parasite)",
+        "Microbiology & Urinalysis (Urine Routine Examination, Culture & Sensitivity, Stool R/E)"
+      ],
+      "fields_per_test": ["test_code", "name", "category", "specimen_type", "turnaround_hours", "price_pkr", "parameters (sub-tests with units, male/female/child normal ranges, critical panic thresholds)"]
+    },
+    "report_generator_flow": [
+      "Step 1: Patient Selection or Quick Add (MR Number, Name, Age, Gender, Contact, Referring Physician)",
+      "Step 2: Test Multi-Picker with search across 700+ tests and category filters + price calculator in PKR",
+      "Step 3: Result Input Matrix with auto-flagging of High/Low based on patient gender and reference range",
+      "Step 4: Clinical Comments & Pathologist Sign-off notes",
+      "Step 5: Live Print-ready PDF Preview modal with one-click window.print() styling and downloadable structured report"
+    ],
+    "trend_analytics": "Patient profile shows historical line chart comparing repeated tests (e.g. HbA1c over past 6 months, Fasting Glucose, Hemoglobin, Platelets, ALT/SGPT) with shaded normal reference boundary."
+  },
+  "media": {
+    "image_urls": {
+      "laboratory_microscope_macro": "https://images.unsplash.com/photo-1614308460927-5024ba2e1dcb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwzfHxjbGluaWNhbCUyMGxhYm9yYXRvcnklMjBkb2N0b3IlMjBtaWNyb3Njb3BlfGVufDB8fHx8MTc5MTE1MDU5Nnww&ixlib=rb-4.1.0&q=85",
+      "laboratory_tubes_rack": "https://images.unsplash.com/photo-1606206591513-adbfbdd7a177?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwxfHxibG9vZCUyMHRlc3QlMjB0dWJlJTIwcmFjayUyMGxhYm9yYXRvcnl8ZW58MHx8fHwxNzkxMTUwNjA1fDA&ixlib=rb-4.1.0&q=85",
+      "laboratory_scientist_microscope": "https://images.unsplash.com/photo-1582719471384-894fbb16e074?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHw0fHxjbGluaWNhbCUyMGxhYm9yYXRvcnklMjBkb2N0b3IlMjBtaWNyb3Njb3BlfGVufDB8fHx8MTc5MTE1MDU5Nnww&ixlib=rb-4.1.0&q=85"
+    },
+    "brand_logo_svg": "Custom inline SVG with intersecting red blood droplet, deep navy DNA double-helix spiral, and clinical teal precision crosshairs/microscope bezel"
+  },
+  "pwa_and_offline_spec": {
+    "manifest_theme_color": "#BE123C",
+    "background_color": "#0F172A",
+    "display": "standalone",
+    "orientation": "any",
+    "name": "LabCare Clinical Laboratory LIS",
+    "short_name": "LabCare LIS",
+    "desktop_features": ["Full keyboard shortcuts for numeric test result entry (Tab + Enter)", "A4 printer optimized @media print CSS"]
+  },
+  "testing_attributes_contract": {
+    "rule": "Every interactive input, button, table row, filter, and modal MUST contain role-based kebab-case data-testid",
+    "required_testids": [
+      "staff-login-button",
+      "staff-role-toggle",
+      "staff-login-email",
+      "staff-login-password",
+      "nav-dashboard-tab",
+      "nav-patients-tab",
+      "nav-catalog-tab",
+      "nav-new-report-tab",
+      "nav-reports-tab",
+      "nav-analytics-tab",
+      "kpi-patients-today",
+      "kpi-tests-today",
+      "kpi-revenue-pkr",
+      "kpi-pending-abnormal",
+      "patient-search-input",
+      "patient-add-button",
+      "patient-form-name",
+      "patient-form-mr-number",
+      "patient-form-age",
+      "patient-form-gender",
+      "patient-form-phone",
+      "patient-form-submit",
+      "catalog-search-input",
+      "catalog-category-filter",
+      "catalog-add-test-button",
+      "report-select-patient-dropdown",
+      "report-test-search",
+      "report-test-checkbox",
+      "report-input-value",
+      "report-flag-abnormal-badge",
+      "report-save-draft-button",
+      "report-approve-sign-button",
+      "report-print-pdf-button",
+      "report-modal-close-button",
+      "patient-trend-select-test",
+      "patient-trend-line-chart"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build a production-grade React JS application in /app/frontend using existing shadcn components, Lucide icons, recharts, and Tailwind CSS.",
+    "Do NOT use .tsx or TypeScript since the project is JavaScript (.js / .jsx).",
+    "Provide rich pre-loaded clinical data: at least 35-50+ realistic lab tests spanning Complete Blood Count (CBC), Liver Function Tests (LFT), Renal Function Tests (RFT), Lipid Profile, Thyroid Panel, Blood Glucose Fasting/Random, Dengue, and HbA1c with exact medical units (g/dL, mg/dL, U/L, %, mmol/L) and adult reference intervals.",
+    "Provide 8-12 pre-loaded patient cases with realistic Pakistani names, MR numbers (e.g. LC-2025-0142), ages, referring physicians, and report history.",
+    "Include a Dedicated Print CSS layout (@media print) for reports so when clicking 'Print Report' or 'Download PDF', standard browser print looks like a high-end pathology laboratory document with lab logo header, patient barcode, dual columns, normal range column, abnormal flags in bold/brackets, and digital pathologist signature seal.",
+    "Include interactive Trend Charts (using recharts) when inspecting a patient's history to visualize test result progression across dates.",
+    "Implement search and category filters for the test catalog and patient records.",
+    "Support Currency formatting in PKR ('Rs. 1,450').",
+    "Include PWA manifest and service worker registration hook for installability on Windows Desktop and Android/iOS tablets.",
+    "Ensure 100% WCAG AA contrast compliance and include all required data-testid attributes."
+  ]
+}

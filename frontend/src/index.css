@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #F8FAFC;
+  color: #0F172A;
+}
+
+h1, h2, h3, h4, .font-display { font-family: 'Manrope', -apple-system, sans-serif; letter-spacing: -0.01em; }
+.font-mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 346 77% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 173 80% 36%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 346 77% 40%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* Status / flag badges */
+.flag-H { @apply bg-rose-100 text-rose-800 border border-rose-300 font-semibold; }
+.flag-L { @apply bg-amber-100 text-amber-800 border border-amber-300 font-semibold; }
+.flag-N { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
+
+/* Login gradient panel */
+.auth-panel {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(190,18,60,0.15), transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(13,148,136,0.18), transparent 50%),
+    linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+}
+
+.brand-grid {
+  background-image:
+    linear-gradient(rgba(15,23,42,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15,23,42,0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Print layout for A4 report */
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+  body { background: white !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-area { box-shadow: none !important; border: none !important; padding: 0 !important; }
+  .print-table th, .print-table td { border: 1px solid #94a3b8 !important; }
+}
+.print-only { display: none; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #F1F5F9; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
