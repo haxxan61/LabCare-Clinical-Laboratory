@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { Plus, X, Pencil, Trash2, Sparkles, Save, Filter } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Sparkles, Save, Filter, Zap } from "lucide-react";
 
-export default function CommentSnippets({ onInsert, activeCategories = [] }) {
+export default function CommentSnippets({ onInsert, activeCategories = [], activeFlags = [] }) {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // {id?, title, text, category}
+  const [editing, setEditing] = useState(null);
   const [q, setQ] = useState("");
   const [showAll, setShowAll] = useState(false);
 
@@ -19,21 +19,42 @@ export default function CommentSnippets({ onInsert, activeCategories = [] }) {
   const matchesActive = (t) =>
     isGeneric(t) || activeCategories.some(c => c && t.category && c.toLowerCase() === t.category.toLowerCase());
 
-  // Chips shown next to Clinical Notes: filtered by active test categories unless user clicked "Show all"
+  // A snippet is "suggested" if any of its triggers matches an active flag.
+  const isSuggested = (t) => {
+    if (!t.triggers || !activeFlags.length) return false;
+    return t.triggers.some(tr =>
+      activeFlags.some(f =>
+        tr.direction === f.flag &&
+        (tr.parameter || "").toLowerCase() === (f.name || "").toLowerCase()
+      )
+    );
+  };
+
   const chipList = useMemo(() => {
     const hasFilter = activeCategories.length > 0 && !showAll;
     const base = hasFilter ? list.filter(matchesActive) : list;
-    return base;
-  }, [list, activeCategories, showAll]);
+    // Sort suggested snippets first
+    return [...base].sort((a, b) => (isSuggested(b) ? 1 : 0) - (isSuggested(a) ? 1 : 0));
+  }, [list, activeCategories, activeFlags, showAll]);
 
-  // Manager modal list: respects search only
+  const suggestedCount = list.filter(isSuggested).length;
+
   const filtered = list.filter(t =>
     q === "" || t.title.toLowerCase().includes(q.toLowerCase()) || t.category.toLowerCase().includes(q.toLowerCase())
   );
 
   const save = async () => {
     if (!editing?.title?.trim() || !editing?.text?.trim()) return;
-    const payload = { title: editing.title, text: editing.text, category: editing.category || "General" };
+    const triggers = (editing.triggers_raw || "")
+      .split(",").map(s => s.trim()).filter(Boolean)
+      .map(s => {
+        const [param, dir] = s.split(":").map(x => (x || "").trim());
+        const direction = (dir || "").toUpperCase();
+        if (!param || !["H", "L"].includes(direction)) return null;
+        return { parameter: param, direction };
+      })
+      .filter(Boolean);
+    const payload = { title: editing.title, text: editing.text, category: editing.category || "General", triggers };
     if (editing.id) await api.put(`/comment-templates/${editing.id}`, payload);
     else await api.post("/comment-templates", payload);
     setEditing(null);
@@ -51,11 +72,16 @@ export default function CommentSnippets({ onInsert, activeCategories = [] }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 flex-wrap">
           <Sparkles size={12} className="text-rose-700"/> Pathologist Snippets
           {activeCategories.length > 0 && !showAll && (
             <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-[9px] font-bold normal-case tracking-normal border border-teal-200">
               <Filter size={9}/> {activeCategories.join(" · ")}
+            </span>
+          )}
+          {suggestedCount > 0 && (
+            <span data-testid="snippets-suggested-badge" className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold normal-case tracking-normal border border-amber-300 animate-pulse">
+              <Zap size={9}/> {suggestedCount} suggested
             </span>
           )}
         </div>
@@ -89,20 +115,27 @@ export default function CommentSnippets({ onInsert, activeCategories = [] }) {
         </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {chipList.slice(0, 12).map(t => (
-            <button
-              type="button"
-              key={t.id}
-              data-testid="snippet-chip"
-              title={t.text}
-              onClick={() => onInsert(t.text)}
-              className="group inline-flex items-center gap-1 pl-2.5 pr-2 py-1 rounded-full border border-slate-200 bg-white hover:border-rose-300 hover:bg-rose-50 transition text-xs"
-            >
-              <Plus size={11} className="text-rose-700"/>
-              <span className="font-medium text-slate-700">{t.title}</span>
-              <span className="text-[10px] text-slate-400 group-hover:text-rose-700">· {t.category}</span>
-            </button>
-          ))}
+          {chipList.slice(0, 12).map(t => {
+            const suggested = isSuggested(t);
+            return (
+              <button
+                type="button"
+                key={t.id}
+                data-testid={suggested ? "snippet-chip-suggested" : "snippet-chip"}
+                title={t.text}
+                onClick={() => onInsert(t.text)}
+                className={`group inline-flex items-center gap-1 pl-2.5 pr-2 py-1 rounded-full border transition text-xs ${
+                  suggested
+                    ? "border-amber-400 bg-amber-50 ring-2 ring-amber-200 hover:bg-amber-100"
+                    : "border-slate-200 bg-white hover:border-rose-300 hover:bg-rose-50"
+                }`}
+              >
+                {suggested ? <Zap size={11} className="text-amber-700 fill-amber-400"/> : <Plus size={11} className="text-rose-700"/>}
+                <span className={`font-medium ${suggested ? "text-amber-900" : "text-slate-700"}`}>{t.title}</span>
+                <span className={`text-[10px] ${suggested ? "text-amber-700" : "text-slate-400 group-hover:text-rose-700"}`}>· {t.category}</span>
+              </button>
+            );
+          })}
           {chipList.length > 12 && (
             <button type="button" onClick={() => setOpen(true)} className="text-xs text-slate-500 hover:text-rose-700 self-center">
               +{chipList.length - 12} more
@@ -134,7 +167,7 @@ export default function CommentSnippets({ onInsert, activeCategories = [] }) {
                     <button
                       type="button"
                       data-testid="snippet-add-new"
-                      onClick={() => setEditing({ title: "", text: "", category: cats[0] || "General" })}
+                      onClick={() => setEditing({ title: "", text: "", category: cats[0] || "General", triggers_raw: "" })}
                       className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-semibold text-sm"
                     >
                       <Plus size={14}/> New
@@ -154,7 +187,10 @@ export default function CommentSnippets({ onInsert, activeCategories = [] }) {
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <button type="button" onClick={() => { onInsert(t.text); }} className="px-2 py-1 rounded text-xs font-semibold text-rose-700 hover:bg-rose-50">Insert</button>
-                            <button type="button" onClick={() => setEditing(t)} className="p-1.5 text-slate-500 hover:text-slate-900"><Pencil size={14}/></button>
+                            <button type="button" onClick={() => setEditing({
+                              ...t,
+                              triggers_raw: (t.triggers || []).map(tr => `${tr.parameter}:${tr.direction}`).join(", ")
+                            })} className="p-1.5 text-slate-500 hover:text-slate-900"><Pencil size={14}/></button>
                             <button type="button" onClick={() => remove(t.id)} className="p-1.5 text-slate-400 hover:text-rose-700"><Trash2 size={14}/></button>
                           </div>
                         </div>
@@ -197,6 +233,20 @@ export default function CommentSnippets({ onInsert, activeCategories = [] }) {
                       rows={5}
                       className="mt-1 w-full px-3 py-2 rounded border border-slate-300 focus:border-rose-500 outline-none text-sm"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 uppercase">Auto-Suggest Triggers (optional)</label>
+                    <input
+                      data-testid="snippet-triggers"
+                      value={editing.triggers_raw || ""}
+                      onChange={e=>setEditing({ ...editing, triggers_raw: e.target.value })}
+                      placeholder="Haemoglobin:L, MCV:L, TSH:H"
+                      className="mt-1 w-full h-10 px-3 rounded border border-slate-300 focus:border-rose-500 outline-none font-mono-num text-sm"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Comma-separated <code>parameter:H</code> or <code>parameter:L</code>. Match is case-insensitive.
+                      Example: <code>Haemoglobin:L, MCV:L</code> highlights this snippet when both are flagged Low.
+                    </p>
                   </div>
                   <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg border border-slate-300 font-semibold text-sm">Cancel</button>

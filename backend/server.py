@@ -372,6 +372,7 @@ class CommentTemplate(BaseModel):
     title: str
     text: str
     category: str = "General"
+    triggers: List[dict] = []  # [{parameter: str, direction: "H"|"L"}]
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -379,25 +380,34 @@ class CommentTemplateIn(BaseModel):
     title: str
     text: str
     category: str = "General"
+    triggers: List[dict] = []
 
 
 SEED_COMMENT_TEMPLATES = [
     {"title": "Mild microcytic anemia", "category": "Hematology",
-     "text": "Findings are consistent with mild microcytic hypochromic anemia. Clinical correlation and iron studies are advised."},
+     "text": "Findings are consistent with mild microcytic hypochromic anemia. Clinical correlation and iron studies are advised.",
+     "triggers": [{"parameter": "Haemoglobin", "direction": "L"}, {"parameter": "MCV", "direction": "L"}, {"parameter": "MCH", "direction": "L"}]},
     {"title": "Iron deficiency pattern", "category": "Hematology",
-     "text": "Picture suggests iron deficiency. Correlation with serum ferritin, iron and TIBC is recommended."},
+     "text": "Picture suggests iron deficiency. Correlation with serum ferritin, iron and TIBC is recommended.",
+     "triggers": [{"parameter": "Ferritin", "direction": "L"}, {"parameter": "Iron", "direction": "L"}, {"parameter": "Haemoglobin", "direction": "L"}]},
     {"title": "Normal CBC", "category": "Hematology",
-     "text": "All haematological parameters are within normal reference limits."},
+     "text": "All haematological parameters are within normal reference limits.",
+     "triggers": []},
     {"title": "Impaired fasting glucose", "category": "Biochemistry",
-     "text": "Fasting glucose is above normal. Suggest HbA1c and OGTT for further evaluation."},
+     "text": "Fasting glucose is above normal. Suggest HbA1c and OGTT for further evaluation.",
+     "triggers": [{"parameter": "Glucose Fasting", "direction": "H"}, {"parameter": "Sugar Fasting", "direction": "H"}]},
     {"title": "Dyslipidemia", "category": "Biochemistry",
-     "text": "Lipid profile shows derangement. Advise lifestyle modification and clinical correlation."},
+     "text": "Lipid profile shows derangement. Advise lifestyle modification and clinical correlation.",
+     "triggers": [{"parameter": "Total Cholesterol", "direction": "H"}, {"parameter": "Triglycerides", "direction": "H"}, {"parameter": "LDL Cholesterol", "direction": "H"}]},
     {"title": "Subclinical hypothyroidism", "category": "Endocrinology",
-     "text": "TSH is elevated with normal T3/T4. Suggest repeat thyroid panel in 6-8 weeks."},
+     "text": "TSH is elevated with normal T3/T4. Suggest repeat thyroid panel in 6-8 weeks.",
+     "triggers": [{"parameter": "TSH", "direction": "H"}]},
     {"title": "Possible UTI", "category": "Urinalysis",
-     "text": "Pus cells and nitrites noted. Suggest urine culture & sensitivity for confirmation."},
+     "text": "Pus cells and nitrites noted. Suggest urine culture & sensitivity for confirmation.",
+     "triggers": [{"parameter": "Pus Cells", "direction": "H"}, {"parameter": "RBCs", "direction": "H"}]},
     {"title": "Deranged LFTs", "category": "Biochemistry",
-     "text": "Liver enzymes are raised. Correlation with viral markers and ultrasound is advised."},
+     "text": "Liver enzymes are raised. Correlation with viral markers and ultrasound is advised.",
+     "triggers": [{"parameter": "SGPT (ALT)", "direction": "H"}, {"parameter": "SGOT (AST)", "direction": "H"}, {"parameter": "Total Bilirubin", "direction": "H"}]},
 ]
 
 
@@ -608,6 +618,15 @@ async def startup():
             doc = CommentTemplate(**t).model_dump()
             await db.comment_templates.insert_one(doc)
         logger.info(f"Seeded {len(SEED_COMMENT_TEMPLATES)} comment templates")
+    else:
+        # Backfill `triggers` on existing seed templates that pre-date this field
+        for t in SEED_COMMENT_TEMPLATES:
+            existing = await db.comment_templates.find_one({"title": t["title"]}, {"_id": 0, "triggers": 1})
+            if existing is not None and not existing.get("triggers"):
+                await db.comment_templates.update_one(
+                    {"title": t["title"]},
+                    {"$set": {"triggers": t.get("triggers", [])}}
+                )
 
     # Warm up object storage (non-fatal)
     try:

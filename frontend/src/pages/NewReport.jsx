@@ -194,6 +194,13 @@ export default function NewReport() {
               <div className="mt-4 space-y-3">
                 <CommentSnippets
                   activeCategories={Array.from(new Set(selected.map(x => x.test.category).filter(Boolean)))}
+                  activeFlags={selected.flatMap(x =>
+                    x.test.parameters.map((p, i) => {
+                      const v = x.values[i];
+                      const f = flagForValue(v, p.low, p.high);
+                      return (f === "H" || f === "L") ? { name: p.name, flag: f } : null;
+                    }).filter(Boolean)
+                  )}
                   onInsert={(txt) => setNotes(notes ? `${notes}\n${txt}` : txt)}
                 />
                 <div>
