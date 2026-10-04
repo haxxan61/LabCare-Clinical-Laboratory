@@ -3,6 +3,7 @@ import { api, formatPKR, flagForValue } from "@/lib/api";
 import { Search, Trash2, Printer, Save, Beaker } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReportPreview from "@/components/ReportPreview";
+import CommentSnippets from "@/components/CommentSnippets";
 
 export default function NewReport() {
   const nav = useNavigate();
@@ -190,9 +191,16 @@ export default function NewReport() {
               ))}
             </div>
             {selected.length > 0 && (
-              <div className="mt-4">
-                <label className="text-xs font-semibold text-slate-700 uppercase">Clinical Notes</label>
-                <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 focus:border-rose-500 outline-none text-sm"/>
+              <div className="mt-4 space-y-3">
+                <CommentSnippets onInsert={(txt) => setNotes(notes ? `${notes}\n${txt}` : txt)} />
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 uppercase">Clinical Notes</label>
+                  <textarea
+                    data-testid="report-clinical-notes"
+                    value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
+                    className="mt-1 w-full px-3 py-2 rounded border border-slate-300 focus:border-rose-500 outline-none text-sm"
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -364,6 +364,69 @@ async def delete_report(rid: str, user: dict = Depends(get_current_user)):
 
 
 # -----------------------------
+# Comment templates (pathologist snippets)
+# -----------------------------
+class CommentTemplate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    title: str
+    text: str
+    category: str = "General"
+    created_at: str = Field(default_factory=now_iso)
+
+
+class CommentTemplateIn(BaseModel):
+    title: str
+    text: str
+    category: str = "General"
+
+
+SEED_COMMENT_TEMPLATES = [
+    {"title": "Mild microcytic anemia", "category": "Hematology",
+     "text": "Findings are consistent with mild microcytic hypochromic anemia. Clinical correlation and iron studies are advised."},
+    {"title": "Iron deficiency pattern", "category": "Hematology",
+     "text": "Picture suggests iron deficiency. Correlation with serum ferritin, iron and TIBC is recommended."},
+    {"title": "Normal CBC", "category": "Hematology",
+     "text": "All haematological parameters are within normal reference limits."},
+    {"title": "Impaired fasting glucose", "category": "Biochemistry",
+     "text": "Fasting glucose is above normal. Suggest HbA1c and OGTT for further evaluation."},
+    {"title": "Dyslipidemia", "category": "Biochemistry",
+     "text": "Lipid profile shows derangement. Advise lifestyle modification and clinical correlation."},
+    {"title": "Subclinical hypothyroidism", "category": "Endocrinology",
+     "text": "TSH is elevated with normal T3/T4. Suggest repeat thyroid panel in 6-8 weeks."},
+    {"title": "Possible UTI", "category": "Urinalysis",
+     "text": "Pus cells and nitrites noted. Suggest urine culture & sensitivity for confirmation."},
+    {"title": "Deranged LFTs", "category": "Biochemistry",
+     "text": "Liver enzymes are raised. Correlation with viral markers and ultrasound is advised."},
+]
+
+
+@api_router.get("/comment-templates")
+async def list_templates(user: dict = Depends(get_current_user)):
+    docs = await db.comment_templates.find({}, {"_id": 0}).sort("category", 1).to_list(500)
+    return docs
+
+
+@api_router.post("/comment-templates")
+async def create_template(data: CommentTemplateIn, user: dict = Depends(get_current_user)):
+    t = CommentTemplate(**data.model_dump())
+    await db.comment_templates.insert_one(t.model_dump())
+    return t.model_dump()
+
+
+@api_router.put("/comment-templates/{tid}")
+async def update_template(tid: str, data: CommentTemplateIn, user: dict = Depends(get_current_user)):
+    await db.comment_templates.update_one({"id": tid}, {"$set": data.model_dump()})
+    return await db.comment_templates.find_one({"id": tid}, {"_id": 0})
+
+
+@api_router.delete("/comment-templates/{tid}")
+async def delete_template(tid: str, user: dict = Depends(get_current_user)):
+    await db.comment_templates.delete_one({"id": tid})
+    return {"ok": True}
+
+
+# -----------------------------
 # Dashboard stats
 # -----------------------------
 @api_router.get("/dashboard/stats")
@@ -538,6 +601,13 @@ async def startup():
     # Seed settings
     if await db.settings.count_documents({}) == 0:
         await db.settings.insert_one({"id": "lab", **DEFAULT_SETTINGS})
+
+    # Seed comment templates
+    if await db.comment_templates.count_documents({}) == 0:
+        for t in SEED_COMMENT_TEMPLATES:
+            doc = CommentTemplate(**t).model_dump()
+            await db.comment_templates.insert_one(doc)
+        logger.info(f"Seeded {len(SEED_COMMENT_TEMPLATES)} comment templates")
 
     # Warm up object storage (non-fatal)
     try:
