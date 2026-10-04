@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
+import { useSettings } from "@/context/SettingsContext";
 import { Loader2, LockKeyhole } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
+  const { settings, logoUrl } = useSettings();
   const [email, setEmail] = useState("admin@labcare.com");
   const [password, setPassword] = useState("admin123");
   const [err, setErr] = useState("");
@@ -22,9 +24,13 @@ export default function Login() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="auth-panel text-white p-10 lg:p-16 flex flex-col justify-between relative overflow-hidden">
         <div className="flex items-center gap-3">
-          <Logo size={44} />
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-11 w-11 object-contain bg-white/5 p-1 rounded"/>
+          ) : (
+            <Logo size={44} />
+          )}
           <div>
-            <div className="font-display font-bold text-xl">LabCare</div>
+            <div className="font-display font-bold text-xl">{(settings.lab_name || "LabCare").split(" ")[0]}</div>
             <div className="text-xs text-slate-300 uppercase tracking-widest">Clinical Laboratory</div>
           </div>
         </div>

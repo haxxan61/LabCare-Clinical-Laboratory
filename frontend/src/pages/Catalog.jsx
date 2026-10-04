@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { api, formatPKR } from "@/lib/api";
-import { Search, FlaskConical } from "lucide-react";
+import { Search, FlaskConical, Download, Loader2 } from "lucide-react";
 
 export default function Catalog() {
   const [tests, setTests] = useState([]);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
   const [editing, setEditing] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
 
   const load = async () => {
     const { data } = await api.get("/tests");
@@ -14,7 +16,7 @@ export default function Catalog() {
   };
   useEffect(() => { load(); }, []);
 
-  const cats = ["All", ...Array.from(new Set(tests.map(t => t.category)))];
+  const cats = ["All", ...Array.from(new Set(tests.map(t => t.category))).sort()];
   const filtered = tests.filter(t =>
     (cat === "All" || t.category === cat) &&
     (q === "" || t.name.toLowerCase().includes(q.toLowerCase()) || t.code.toLowerCase().includes(q.toLowerCase()))
@@ -26,13 +28,37 @@ export default function Catalog() {
     setEditing(null);
   };
 
+  const importFull = async () => {
+    if (!confirm("Import the full test catalog (700+ tests) from the Umar PDF? Existing tests will be preserved.")) return;
+    setImporting(true); setImportMsg("");
+    try {
+      const { data } = await api.post("/tests/import-full");
+      setImportMsg(`Added ${data.added} new tests. Total now: ${data.total}.`);
+      await load();
+      setTimeout(() => setImportMsg(""), 5000);
+    } catch (e) {
+      setImportMsg("Import failed. Please try again.");
+    } finally { setImporting(false); }
+  };
+
   return (
     <div className="max-w-7xl space-y-6">
-      <div>
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-rose-700">Test Catalog</div>
-        <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-900 mt-1">Available Tests</h1>
-        <p className="text-slate-500 text-sm mt-1">{tests.length} tests · click a price to edit</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-rose-700">Test Catalog</div>
+          <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-900 mt-1">Available Tests</h1>
+          <p className="text-slate-500 text-sm mt-1">{tests.length} tests · click a price to edit</p>
+        </div>
+        <button
+          data-testid="catalog-import-full-button"
+          onClick={importFull} disabled={importing}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm transition disabled:opacity-60"
+        >
+          {importing ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
+          Import Full Catalog (700+)
+        </button>
       </div>
+      {importMsg && <div className="text-sm bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2">{importMsg}</div>}
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

@@ -1,11 +1,13 @@
 import React from "react";
 import { formatPKR } from "@/lib/api";
 import { Logo } from "@/components/Logo";
+import { useSettings } from "@/context/SettingsContext";
 import { X, Printer } from "lucide-react";
 
 export default function ReportPreview({ report, onClose }) {
   const p = report.patient_snapshot || {};
   const date = new Date(report.created_at);
+  const { settings, logoUrl } = useSettings();
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 overflow-y-auto">
@@ -23,17 +25,21 @@ export default function ReportPreview({ report, onClose }) {
         <div className="w-full max-w-4xl bg-white shadow-2xl print-area">
           <div className="p-10">
             {/* Header */}
-            <div className="flex items-start justify-between border-b-4 border-rose-700 pb-5">
+            <div className="flex items-start justify-between pb-5" style={{ borderBottom: `4px solid ${settings.primary_color || "#BE123C"}` }}>
               <div className="flex items-center gap-4">
-                <Logo size={64} />
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Lab logo" crossOrigin="anonymous" className="h-16 w-16 object-contain"/>
+                ) : (
+                  <Logo size={64} />
+                )}
                 <div>
-                  <h1 className="font-display text-3xl font-black text-slate-900">LabCare Clinical Laboratory</h1>
-                  <div className="text-xs text-slate-600 mt-1">Precision Diagnostics · ISO Accredited</div>
-                  <div className="text-xs text-slate-500">Chichawatni Road, Burewala · +92-300-0000000</div>
+                  <h1 className="font-display text-3xl font-black" style={{ color: settings.primary_color || "#0F172A" }}>{settings.lab_name || "LabCare Clinical Laboratory"}</h1>
+                  <div className="text-xs text-slate-600 mt-1">{settings.tagline}</div>
+                  <div className="text-xs text-slate-500">{settings.address}{settings.phone ? ` · ${settings.phone}` : ""}</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-rose-700">Pathology Report</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: settings.primary_color || "#BE123C" }}>Pathology Report</div>
                 <div className="font-mono-num text-sm font-bold mt-1">{report.report_no}</div>
                 <div className="text-[11px] text-slate-500 mt-0.5">{date.toLocaleDateString("en-PK")} · {date.toLocaleTimeString("en-PK",{hour:"2-digit",minute:"2-digit"})}</div>
               </div>
@@ -56,7 +62,7 @@ export default function ReportPreview({ report, onClose }) {
             {/* Results */}
             {report.results.map((r, idx) => (
               <div key={idx} className="mt-5">
-                <h3 className="font-display font-bold text-base text-rose-700 uppercase tracking-wide border-b-2 border-rose-200 pb-1">
+                <h3 className="font-display font-bold text-base uppercase tracking-wide border-b-2 pb-1" style={{ color: settings.primary_color || "#BE123C", borderColor: (settings.primary_color || "#BE123C") + "33" }}>
                   {r.test_name}
                 </h3>
                 <table className="w-full mt-2 text-sm print-table">
@@ -111,7 +117,7 @@ export default function ReportPreview({ report, onClose }) {
             </div>
 
             <div className="mt-6 text-center text-[10px] text-slate-400 border-t border-dashed border-slate-200 pt-3">
-              Total Amount: <b className="text-slate-700 font-mono-num">{formatPKR(report.total_amount)}</b> · Thank you for choosing LabCare
+              Total Amount: <b className="text-slate-700 font-mono-num">{formatPKR(report.total_amount)}</b> · Thank you for choosing {settings.lab_name || "LabCare"}
             </div>
           </div>
         </div>

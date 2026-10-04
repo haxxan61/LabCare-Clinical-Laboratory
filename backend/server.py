@@ -11,12 +11,14 @@ import jwt
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Any
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, UploadFile, File
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from seed_data import SEED_TESTS, SEED_PATIENTS
+from full_catalog import FULL_CATALOG, categorize
+from storage import init_storage, put_object, get_object, APP_NAME
 
 # -----------------------------
 # Setup
@@ -273,6 +275,30 @@ async def list_tests(user: dict = Depends(get_current_user)):
     return docs
 
 
+@api_router.post("/tests/import-full")
+async def import_full_catalog(user: dict = Depends(get_current_user)):
+    """Bulk-insert all tests from the Umar PDF (skips any duplicates by code)."""
+    existing_codes = {t["code"] async for t in db.tests.find({}, {"code": 1, "_id": 0})}
+    added = 0
+    for code, name, price in FULL_CATALOG:
+        code_str = str(code)
+        if code_str in existing_codes:
+            continue
+        doc = TestItem(
+            code=code_str,
+            name=name,
+            category=categorize(name),
+            specimen="",
+            price=float(price),
+            tat_hours=24,
+            parameters=[],
+        ).model_dump()
+        await db.tests.insert_one(doc)
+        added += 1
+    total = await db.tests.count_documents({})
+    return {"added": added, "total": total}
+
+
 @api_router.post("/tests")
 async def create_test(data: TestItemIn, user: dict = Depends(get_current_user)):
     t = TestItem(**data.model_dump())
@@ -376,6 +402,85 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
 
 
 # -----------------------------
+# Settings (lab branding)
+# -----------------------------
+DEFAULT_SETTINGS = {
+    "lab_name": "LabCare Clinical Laboratory",
+    "tagline": "Precision Diagnostics · ISO Accredited",
+    "address": "Chichawatni Road, Burewala",
+    "phone": "+92-300-0000000",
+    "email": "",
+    "primary_color": "#BE123C",
+    "accent_color": "#0D9488",
+    "logo_path": "",
+}
+
+
+class SettingsIn(BaseModel):
+    lab_name: Optional[str] = None
+    tagline: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    primary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+    logo_path: Optional[str] = None
+
+
+async def _get_settings_doc():
+    doc = await db.settings.find_one({"id": "lab"}, {"_id": 0})
+    if not doc:
+        doc = {"id": "lab", **DEFAULT_SETTINGS}
+        await db.settings.insert_one(doc)
+        doc.pop("_id", None)
+    return doc
+
+
+@api_router.get("/settings")
+async def get_settings():
+    """Public — needed to render login screen branding."""
+    doc = await _get_settings_doc()
+    return doc
+
+
+@api_router.put("/settings")
+async def update_settings(data: SettingsIn, user: dict = Depends(get_current_user)):
+    update = {k: v for k, v in data.model_dump().items() if v is not None}
+    await db.settings.update_one({"id": "lab"}, {"$set": update}, upsert=True)
+    return await _get_settings_doc()
+
+
+@api_router.post("/settings/logo")
+async def upload_logo(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    data = await file.read()
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo must be under 2 MB")
+    ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "png").lower()
+    path = f"{APP_NAME}/branding/logo-{uuid.uuid4().hex}.{ext}"
+    result = put_object(path, data, file.content_type)
+    canonical_path = result["path"]
+    await db.settings.update_one({"id": "lab"}, {"$set": {"logo_path": canonical_path}}, upsert=True)
+    return {"logo_path": canonical_path}
+
+
+@api_router.get("/settings/logo")
+async def serve_logo():
+    """Public endpoint — returns raw image bytes of the stored lab logo."""
+    doc = await _get_settings_doc()
+    path = doc.get("logo_path")
+    if not path:
+        raise HTTPException(status_code=404, detail="No logo set")
+    try:
+        data, ct = get_object(path)
+    except Exception as e:
+        logger.error(f"Logo fetch failed: {e}")
+        raise HTTPException(status_code=404, detail="Logo unavailable")
+    return Response(content=data, media_type=ct or "image/png")
+
+
+# -----------------------------
 # Startup: seed admin + catalog
 # -----------------------------
 @app.on_event("startup")
@@ -419,6 +524,17 @@ async def startup():
             doc = Patient(**p).model_dump()
             await db.patients.insert_one(doc)
         logger.info(f"Seeded {len(SEED_PATIENTS)} patients")
+
+    # Seed settings
+    if await db.settings.count_documents({}) == 0:
+        await db.settings.insert_one({"id": "lab", **DEFAULT_SETTINGS})
+
+    # Warm up object storage (non-fatal)
+    try:
+        init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.warning(f"Object storage init failed (uploads will retry on first call): {e}")
 
 
 @app.on_event("shutdown")

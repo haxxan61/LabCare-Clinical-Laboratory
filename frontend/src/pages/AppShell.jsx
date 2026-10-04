@@ -4,8 +4,9 @@ import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
 import {
   LayoutDashboard, Users, FlaskConical, FilePlus2, FileText,
-  LineChart, LogOut, Menu, X
+  LineChart, LogOut, Menu, Settings as SettingsIcon
 } from "lucide-react";
+import { useSettings } from "@/context/SettingsContext";
 
 const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", testid: "nav-dashboard-tab", end: true },
@@ -14,25 +15,35 @@ const NAV = [
   { to: "/reports/new", icon: FilePlus2, label: "New Report", testid: "nav-new-report-tab" },
   { to: "/reports", icon: FileText, label: "Reports", testid: "nav-reports-tab" },
   { to: "/analytics", icon: LineChart, label: "Analytics", testid: "nav-analytics-tab" },
+  { to: "/settings", icon: SettingsIcon, label: "Settings", testid: "nav-settings-tab" },
 ];
 
 export default function AppShell() {
   const { user, logout } = useAuth();
+  const { settings, logoUrl } = useSettings();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
 
   const doLogout = async () => { await logout(); nav("/login"); };
 
+  const BrandBlock = () => (
+    <div className="px-5 py-5 flex items-center gap-3 border-b border-slate-800">
+      {logoUrl ? (
+        <img src={logoUrl} alt="" className="h-9 w-9 object-contain rounded bg-white/5 p-1"/>
+      ) : (
+        <Logo size={36} />
+      )}
+      <div>
+        <div className="font-display font-bold text-white text-base leading-none">{(settings.lab_name || "LabCare").split(" ")[0]}</div>
+        <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Clinical Lab</div>
+      </div>
+    </div>
+  );
+
   const SidebarInner = () => (
     <div className="h-full flex flex-col">
-      <div className="px-5 py-5 flex items-center gap-3 border-b border-slate-800">
-        <Logo size={36} />
-        <div>
-          <div className="font-display font-bold text-white text-base leading-none">LabCare</div>
-          <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Clinical Lab</div>
-        </div>
-      </div>
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      <BrandBlock />
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         {NAV.map((n) => (
           <NavLink
             key={n.to} to={n.to} end={n.end}
@@ -89,7 +100,10 @@ export default function AppShell() {
           <button data-testid="mobile-menu-toggle" onClick={()=>setOpen(true)} className="p-2 -ml-2">
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-2"><Logo size={28}/><span className="font-display font-bold">LabCare</span></div>
+          <div className="flex items-center gap-2">
+            {logoUrl ? <img src={logoUrl} alt="" className="h-7 w-7 object-contain"/> : <Logo size={28}/>}
+            <span className="font-display font-bold">{(settings.lab_name || "LabCare").split(" ")[0]}</span>
+          </div>
           <div className="w-8" />
         </header>
 
