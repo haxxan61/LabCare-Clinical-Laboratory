@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { Plus, X, Pencil, Trash2, Sparkles, Save } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Sparkles, Save, Filter } from "lucide-react";
 
-export default function CommentSnippets({ onInsert }) {
+export default function CommentSnippets({ onInsert, activeCategories = [] }) {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null); // {id?, title, text, category}
   const [q, setQ] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const load = async () => {
     const { data } = await api.get("/comment-templates");
@@ -14,6 +15,18 @@ export default function CommentSnippets({ onInsert }) {
   };
   useEffect(() => { load(); }, []);
 
+  const isGeneric = (t) => !t.category || t.category.toLowerCase() === "general";
+  const matchesActive = (t) =>
+    isGeneric(t) || activeCategories.some(c => c && t.category && c.toLowerCase() === t.category.toLowerCase());
+
+  // Chips shown next to Clinical Notes: filtered by active test categories unless user clicked "Show all"
+  const chipList = useMemo(() => {
+    const hasFilter = activeCategories.length > 0 && !showAll;
+    const base = hasFilter ? list.filter(matchesActive) : list;
+    return base;
+  }, [list, activeCategories, showAll]);
+
+  // Manager modal list: respects search only
   const filtered = list.filter(t =>
     q === "" || t.title.toLowerCase().includes(q.toLowerCase()) || t.category.toLowerCase().includes(q.toLowerCase())
   );
@@ -40,22 +53,43 @@ export default function CommentSnippets({ onInsert }) {
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
           <Sparkles size={12} className="text-rose-700"/> Pathologist Snippets
+          {activeCategories.length > 0 && !showAll && (
+            <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-[9px] font-bold normal-case tracking-normal border border-teal-200">
+              <Filter size={9}/> {activeCategories.join(" · ")}
+            </span>
+          )}
         </div>
-        <button
-          type="button"
-          data-testid="open-snippets-manager"
-          onClick={() => setOpen(true)}
-          className="text-xs font-semibold text-rose-700 hover:underline"
-        >
-          Manage →
-        </button>
+        <div className="flex items-center gap-3">
+          {activeCategories.length > 0 && list.some(t => !matchesActive(t)) && (
+            <button
+              type="button"
+              data-testid="snippets-show-all-toggle"
+              onClick={() => setShowAll(s => !s)}
+              className="text-xs font-semibold text-slate-500 hover:text-rose-700"
+            >
+              {showAll ? "Match tests" : "Show all"}
+            </button>
+          )}
+          <button
+            type="button"
+            data-testid="open-snippets-manager"
+            onClick={() => setOpen(true)}
+            className="text-xs font-semibold text-rose-700 hover:underline"
+          >
+            Manage →
+          </button>
+        </div>
       </div>
 
       {list.length === 0 ? (
         <div className="text-xs text-slate-400 italic">No snippets yet — click Manage to add one.</div>
+      ) : chipList.length === 0 ? (
+        <div className="text-xs text-slate-400 italic">
+          No snippets match the selected tests. <button type="button" onClick={() => setShowAll(true)} className="text-rose-700 font-semibold hover:underline">Show all</button>
+        </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {list.slice(0, 12).map(t => (
+          {chipList.slice(0, 12).map(t => (
             <button
               type="button"
               key={t.id}
@@ -69,9 +103,9 @@ export default function CommentSnippets({ onInsert }) {
               <span className="text-[10px] text-slate-400 group-hover:text-rose-700">· {t.category}</span>
             </button>
           ))}
-          {list.length > 12 && (
+          {chipList.length > 12 && (
             <button type="button" onClick={() => setOpen(true)} className="text-xs text-slate-500 hover:text-rose-700 self-center">
-              +{list.length - 12} more
+              +{chipList.length - 12} more
             </button>
           )}
         </div>

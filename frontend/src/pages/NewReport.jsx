@@ -192,7 +192,10 @@ export default function NewReport() {
             </div>
             {selected.length > 0 && (
               <div className="mt-4 space-y-3">
-                <CommentSnippets onInsert={(txt) => setNotes(notes ? `${notes}\n${txt}` : txt)} />
+                <CommentSnippets
+                  activeCategories={Array.from(new Set(selected.map(x => x.test.category).filter(Boolean)))}
+                  onInsert={(txt) => setNotes(notes ? `${notes}\n${txt}` : txt)}
+                />
                 <div>
                   <label className="text-xs font-semibold text-slate-700 uppercase">Clinical Notes</label>
                   <textarea
