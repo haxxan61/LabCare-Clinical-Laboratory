@@ -52,7 +52,7 @@ export default function NewReport() {
       const value = x.values[i] ?? "";
       const ref = patient?.gender === "Female" ? p.ref_female : p.ref_male;
       const flag = flagForValue(value, p.low, p.high);
-      return { name: p.name, unit: p.unit, value: String(value), ref, flag };
+      return { name: p.name, unit: p.unit, value: String(value), ref, flag, group: p.group || "" };
     })
   }));
 
@@ -154,28 +154,35 @@ export default function NewReport() {
                       const value = x.values[i] ?? "";
                       const flag = flagForValue(value, p.low, p.high);
                       const ref = patient?.gender === "Female" ? p.ref_female : p.ref_male;
+                      const prevGroup = i > 0 ? (x.test.parameters[i - 1].group || "") : "__start__";
+                      const showGroup = p.group && p.group !== prevGroup;
                       return (
-                        <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-12 sm:col-span-5 text-sm text-slate-700">{p.name}</div>
-                          <div className="col-span-6 sm:col-span-3">
-                            <input
-                              data-testid="report-input-value"
-                              value={value} onChange={e=>setVal(x.test.id, i, e.target.value)}
-                              placeholder="Value"
-                              className="w-full h-9 px-2 rounded border border-slate-300 font-mono-num focus:border-rose-500 outline-none text-sm"
-                            />
+                        <React.Fragment key={i}>
+                          {showGroup && (
+                            <div className="col-span-12 mt-2 pt-2 border-t border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-600">{p.group}</div>
+                          )}
+                          <div className="grid grid-cols-12 gap-2 items-center">
+                            <div className="col-span-12 sm:col-span-5 text-sm text-slate-700">{p.name}</div>
+                            <div className="col-span-6 sm:col-span-3">
+                              <input
+                                data-testid="report-input-value"
+                                value={value} onChange={e=>setVal(x.test.id, i, e.target.value)}
+                                placeholder="Value"
+                                className="w-full h-9 px-2 rounded border border-slate-300 font-mono-num focus:border-rose-500 outline-none text-sm"
+                              />
+                            </div>
+                            <div className="col-span-3 sm:col-span-2 text-xs text-slate-500 font-mono-num">{p.unit}</div>
+                            <div className="col-span-3 sm:col-span-2 text-right">
+                              {flag && flag !== "N" && (
+                                <span data-testid="report-flag-abnormal-badge" className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${flag === "H" ? "flag-H" : "flag-L"}`}>
+                                  {flag}
+                                </span>
+                              )}
+                              {flag === "N" && <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold flag-N">N</span>}
+                            </div>
+                            <div className="col-span-12 text-[11px] text-slate-500 -mt-1">Ref ({patient?.gender || "M"}): <span className="font-mono-num">{ref}</span></div>
                           </div>
-                          <div className="col-span-3 sm:col-span-2 text-xs text-slate-500 font-mono-num">{p.unit}</div>
-                          <div className="col-span-3 sm:col-span-2 text-right">
-                            {flag && flag !== "N" && (
-                              <span data-testid="report-flag-abnormal-badge" className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${flag === "H" ? "flag-H" : "flag-L"}`}>
-                                {flag}
-                              </span>
-                            )}
-                            {flag === "N" && <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold flag-N">N</span>}
-                          </div>
-                          <div className="col-span-12 text-[11px] text-slate-500 -mt-1">Ref ({patient?.gender || "M"}): <span className="font-mono-num">{ref}</span></div>
-                        </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>

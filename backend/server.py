@@ -133,6 +133,7 @@ class TestParameter(BaseModel):
     ref_female: str = ""
     low: Optional[float] = None
     high: Optional[float] = None
+    group: str = ""  # optional section header, e.g. "RBCs Parameter"
 
 
 class TestItem(BaseModel):
@@ -517,6 +518,15 @@ async def startup():
             doc = TestItem(**t).model_dump()
             await db.tests.insert_one(doc)
         logger.info(f"Seeded {len(SEED_TESTS)} tests")
+
+    # Always refresh the CBC structure so grouped layout stays in sync with seed_data
+    cbc_seed = next((t for t in SEED_TESTS if t.get("code") == "CBC"), None)
+    if cbc_seed:
+        existing_cbc = await db.tests.find_one({"code": "CBC"}, {"_id": 0, "id": 1})
+        if existing_cbc:
+            new_cbc = TestItem(**cbc_seed).model_dump()
+            new_cbc["id"] = existing_cbc["id"]  # keep same id to preserve references
+            await db.tests.update_one({"id": existing_cbc["id"]}, {"$set": new_cbc})
 
     # Seed patients
     if await db.patients.count_documents({}) == 0:

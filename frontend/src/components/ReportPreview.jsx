@@ -1,5 +1,4 @@
 import React from "react";
-import { formatPKR } from "@/lib/api";
 import { Logo } from "@/components/Logo";
 import { useSettings } from "@/context/SettingsContext";
 import { X, Printer } from "lucide-react";
@@ -76,19 +75,30 @@ export default function ReportPreview({ report, onClose }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {r.parameters.map((p, i) => (
-                      <tr key={i} className="border-b border-slate-100">
-                        <td className="py-1.5 pr-2 text-slate-800">{p.name}</td>
-                        <td className={`py-1.5 pr-2 font-mono-num font-bold ${p.flag==="H"||p.flag==="L"?"text-rose-700":"text-slate-900"}`}>{p.value || "—"}</td>
-                        <td className="py-1.5 pr-2 text-slate-600 font-mono-num text-xs">{p.unit}</td>
-                        <td className="py-1.5 pr-2 text-slate-600 font-mono-num text-xs">{p.ref}</td>
-                        <td className="py-1.5">
-                          {p.flag && p.flag !== "N" && p.flag !== "" && (
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${p.flag==="H"?"flag-H":"flag-L"}`}>{p.flag}</span>
+                    {r.parameters.map((p, i) => {
+                      const prevGroup = i > 0 ? (r.parameters[i - 1].group || "") : "__start__";
+                      const showGroup = p.group && p.group !== prevGroup;
+                      return (
+                        <React.Fragment key={i}>
+                          {showGroup && (
+                            <tr className="bg-slate-100">
+                              <td colSpan={5} className="py-1.5 px-2 text-[11px] font-bold uppercase tracking-wider text-slate-700">{p.group}</td>
+                            </tr>
                           )}
-                        </td>
-                      </tr>
-                    ))}
+                          <tr className="border-b border-slate-100">
+                            <td className="py-1.5 pr-2 text-slate-800">{p.name}</td>
+                            <td className={`py-1.5 pr-2 font-mono-num font-bold ${p.flag==="H"||p.flag==="L"?"text-rose-700":"text-slate-900"}`}>{p.value || "—"}</td>
+                            <td className="py-1.5 pr-2 text-slate-600 font-mono-num text-xs">{p.unit}</td>
+                            <td className="py-1.5 pr-2 text-slate-600 font-mono-num text-xs">{p.ref}</td>
+                            <td className="py-1.5">
+                              {p.flag && p.flag !== "N" && p.flag !== "" && (
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${p.flag==="H"?"flag-H":"flag-L"}`}>{p.flag}</span>
+                              )}
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -116,8 +126,11 @@ export default function ReportPreview({ report, onClose }) {
               </div>
             </div>
 
-            <div className="mt-6 text-center text-[10px] text-slate-400 border-t border-dashed border-slate-200 pt-3">
-              Total Amount: <b className="text-slate-700 font-mono-num">{formatPKR(report.total_amount)}</b> · Thank you for choosing {settings.lab_name || "LabCare"}
+            <div className="mt-6 text-center text-[11px] font-bold uppercase tracking-wider border-t-2 border-b border-slate-300 py-2" style={{ color: settings.primary_color || "#BE123C" }}>
+              This report is not valid for medico-legal purposes.
+            </div>
+            <div className="mt-3 text-center text-[10px] text-slate-400">
+              Thank you for choosing {settings.lab_name || "LabCare"}
             </div>
           </div>
         </div>
