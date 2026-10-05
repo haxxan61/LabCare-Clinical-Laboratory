@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, formatPKR, flagForValue } from "@/lib/api";
-import { Search, Trash2, Printer, Save, Beaker } from "lucide-react";
+import { Search, Trash2, Printer, Save, Beaker, UserPlus, Users as UsersIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReportPreview from "@/components/ReportPreview";
 import CommentSnippets from "@/components/CommentSnippets";
@@ -10,12 +10,15 @@ export default function NewReport() {
   const [patients, setPatients] = useState([]);
   const [tests, setTests] = useState([]);
   const [patientId, setPatientId] = useState("");
-  const [selected, setSelected] = useState([]); // [{test, values:{paramIdx: value}}]
+  const [mode, setMode] = useState("existing"); // "existing" | "new"
+  const [walkIn, setWalkIn] = useState({ name: "", age: "", gender: "Male", phone: "", referring_physician: "" });
+  const [selected, setSelected] = useState([]);
   const [q, setQ] = useState("");
   const [notes, setNotes] = useState("");
   const [showPrint, setShowPrint] = useState(false);
   const [savedReport, setSavedReport] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -26,7 +29,11 @@ export default function NewReport() {
     })();
   }, []);
 
-  const patient = patients.find(p => p.id === patientId);
+  const existingPatient = patients.find(p => p.id === patientId);
+  const patient = mode === "existing"
+    ? existingPatient
+    : (walkIn.name.trim() ? { name: walkIn.name.trim(), age: parseInt(walkIn.age) || 0, gender: walkIn.gender, phone: walkIn.phone, referring_physician: walkIn.referring_physician } : null);
+
   const filtered = tests.filter(t =>
     q === "" || t.name.toLowerCase().includes(q.toLowerCase()) || t.code.toLowerCase().includes(q.toLowerCase())
   );
@@ -59,13 +66,45 @@ export default function NewReport() {
 
   const save = async (print = false) => {
     if (!patient || selected.length === 0) return;
-    setSaving(true);
+    setSaving(true); setErr("");
     try {
-      const payload = { patient_id: patient.id, results: buildResults(), total_amount: total, status: "completed", clinical_notes: notes };
+      let activePatient = existingPatient;
+      // Walk-in mode: create the patient first
+      if (mode === "new") {
+        if (!walkIn.name.trim() || !walkIn.age) {
+          setErr("Please enter the patient's name and age");
+          setSaving(false);
+          return;
+        }
+        const created = await api.post("/patients", {
+          name: walkIn.name.trim(),
+          age: parseInt(walkIn.age) || 0,
+          gender: walkIn.gender,
+          phone: walkIn.phone,
+          referring_physician: walkIn.referring_physician,
+        });
+        activePatient = created.data;
+        setPatients([activePatient, ...patients]);
+      }
+      const resultsForSave = selected.map(x => ({
+        test_id: x.test.id,
+        test_code: x.test.code,
+        test_name: x.test.name,
+        category: x.test.category,
+        parameters: x.test.parameters.map((p, i) => {
+          const value = x.values[i] ?? "";
+          const ref = activePatient?.gender === "Female" ? p.ref_female : p.ref_male;
+          const flag = flagForValue(value, p.low, p.high);
+          return { name: p.name, unit: p.unit, value: String(value), ref, flag, group: p.group || "" };
+        })
+      }));
+      const payload = { patient_id: activePatient.id, results: resultsForSave, total_amount: total, status: "completed", clinical_notes: notes };
       const { data } = await api.post("/reports", payload);
       setSavedReport(data);
       if (print) setShowPrint(true);
       else nav(`/reports`);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || "Save failed");
     } finally { setSaving(false); }
   };
 
@@ -80,19 +119,93 @@ export default function NewReport() {
         {/* Left - selection */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white border border-slate-200 rounded-xl p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2">Step 1 · Select Patient</div>
-            <select
-              data-testid="report-select-patient-dropdown"
-              value={patientId} onChange={e=>setPatientId(e.target.value)}
-              className="w-full h-11 px-3 rounded-lg bg-white border border-slate-300 focus:border-rose-500 outline-none"
-            >
-              <option value="">— Choose patient —</option>
-              {patients.map(p => <option key={p.id} value={p.id}>{p.mr_number} · {p.name} ({p.age}y, {p.gender})</option>)}
-            </select>
-            {patient && (
-              <div className="mt-3 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                <div><b>{patient.name}</b> · {patient.age}y · {patient.gender}</div>
-                <div className="text-slate-500">{patient.phone} · Ref: {patient.referring_physician || "—"}</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Step 1 · Patient</div>
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+                <button
+                  type="button"
+                  data-testid="patient-mode-existing"
+                  onClick={() => setMode("existing")}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded ${mode === "existing" ? "bg-white shadow-sm text-slate-900 font-semibold" : "text-slate-500"}`}
+                >
+                  <UsersIcon size={12}/> Existing
+                </button>
+                <button
+                  type="button"
+                  data-testid="patient-mode-new"
+                  onClick={() => setMode("new")}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded ${mode === "new" ? "bg-white shadow-sm text-slate-900 font-semibold" : "text-slate-500"}`}
+                >
+                  <UserPlus size={12}/> New / Walk-in
+                </button>
+              </div>
+            </div>
+
+            {mode === "existing" ? (
+              <>
+                <select
+                  data-testid="report-select-patient-dropdown"
+                  value={patientId} onChange={e=>setPatientId(e.target.value)}
+                  className="w-full h-11 px-3 rounded-lg bg-white border border-slate-300 focus:border-rose-500 outline-none"
+                >
+                  <option value="">— Choose patient —</option>
+                  {patients.map(p => <option key={p.id} value={p.id}>{p.mr_number} · {p.name} ({p.age}y, {p.gender})</option>)}
+                </select>
+                {existingPatient && (
+                  <div className="mt-3 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <div><b>{existingPatient.name}</b> · {existingPatient.age}y · {existingPatient.gender}</div>
+                    <div className="text-slate-500">{existingPatient.phone} · Ref: {existingPatient.referring_physician || "—"}</div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 uppercase">Patient Name</label>
+                  <input
+                    data-testid="walkin-name"
+                    value={walkIn.name} onChange={e=>setWalkIn({ ...walkIn, name: e.target.value })}
+                    placeholder="e.g. Muhammad Ahmed"
+                    className="mt-1 w-full h-10 px-3 rounded border border-slate-300 focus:border-rose-500 outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 uppercase">Age</label>
+                    <input
+                      data-testid="walkin-age" type="number"
+                      value={walkIn.age} onChange={e=>setWalkIn({ ...walkIn, age: e.target.value })}
+                      className="mt-1 w-full h-10 px-3 rounded border border-slate-300 focus:border-rose-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 uppercase">Gender</label>
+                    <select
+                      data-testid="walkin-gender"
+                      value={walkIn.gender} onChange={e=>setWalkIn({ ...walkIn, gender: e.target.value })}
+                      className="mt-1 w-full h-10 px-3 rounded border border-slate-300 focus:border-rose-500 outline-none"
+                    >
+                      <option>Male</option><option>Female</option><option>Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 uppercase">Phone (optional)</label>
+                  <input
+                    value={walkIn.phone} onChange={e=>setWalkIn({ ...walkIn, phone: e.target.value })}
+                    className="mt-1 w-full h-10 px-3 rounded border border-slate-300 focus:border-rose-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 uppercase">Referring Physician (optional)</label>
+                  <input
+                    value={walkIn.referring_physician} onChange={e=>setWalkIn({ ...walkIn, referring_physician: e.target.value })}
+                    className="mt-1 w-full h-10 px-3 rounded border border-slate-300 focus:border-rose-500 outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded p-2">
+                  A new patient record will be auto-created with the next MR number when you save this report.
+                </p>
               </div>
             )}
           </div>
@@ -215,7 +328,8 @@ export default function NewReport() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 justify-end">
+          <div className="flex flex-wrap gap-2 justify-end items-center">
+            {err && <div className="text-sm text-rose-700 mr-auto">{err}</div>}
             <button
               data-testid="report-save-draft-button"
               disabled={!patient || selected.length === 0 || saving}
