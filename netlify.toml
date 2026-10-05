@@ -1,0 +1,19 @@
+# Netlify configuration for LabCare frontend
+# NOTE: Netlify only hosts the React frontend. The FastAPI backend and MongoDB
+# must be deployed separately (Render / Fly.io / Railway + MongoDB Atlas) and
+# the backend URL set as REACT_APP_BACKEND_URL in Netlify's environment vars.
+
+[build]
+  base    = "frontend"
+  publish = "frontend/build"
+  command = "yarn install && yarn build"
+
+[build.environment]
+  CI = "false"            # Treat CRA warnings as warnings, not build errors
+  NODE_VERSION = "20"
+
+# SPA fallback — all unknown routes return index.html so React Router can handle them
+[[redirects]]
+  from   = "/*"
+  to    = "/index.html"
+  status = 200
